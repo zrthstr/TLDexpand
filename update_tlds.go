@@ -17,7 +17,7 @@ const (
 	wildcardMinHits = 2
 )
 
-func updateTLDs(outputFile string) error {
+func updateTLDs() error {
 	fmt.Fprintf(os.Stderr, "Fetching TLD list from IANA...\n")
 
 	// Fetch IANA list
@@ -65,25 +65,16 @@ func updateTLDs(outputFile string) error {
 		fmt.Fprintf(os.Stderr, "\n")
 	}
 
-	// Write clean TLD list
-	f, err := os.Create(outputFile)
-	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer f.Close()
+	// Write clean TLD list to stdout
+	fmt.Printf("# TLD list from IANA (wildcard TLDs removed)\n")
+	fmt.Printf("# Generated: %s\n", time.Now().Format(time.RFC3339))
+	fmt.Printf("# Source: %s\n", ianaURL)
+	fmt.Printf("# Wildcards removed: %d\n", len(wildcardTLDs))
 
-	// Write header comment
-	fmt.Fprintf(f, "# TLD list from IANA (wildcard TLDs removed)\n")
-	fmt.Fprintf(f, "# Generated: %s\n", time.Now().Format(time.RFC3339))
-	fmt.Fprintf(f, "# Source: %s\n", ianaURL)
-	fmt.Fprintf(f, "# Wildcards removed: %d\n", len(wildcardTLDs))
-
-	// Write TLDs
 	for _, tld := range cleanTLDs {
-		fmt.Fprintln(f, strings.ToUpper(tld))
+		fmt.Println(strings.ToUpper(tld))
 	}
 
-	fmt.Fprintf(os.Stderr, "Wrote clean TLD list to: %s\n", outputFile)
 	return nil
 }
 

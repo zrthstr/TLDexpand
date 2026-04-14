@@ -19,21 +19,20 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s <domain> <tld-file> <resolver>\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "   or: %s --update [output-file]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "   or: %s --update\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Scan mode:\n")
 		fmt.Fprintf(os.Stderr, "  domain      Domain name to scan (e.g., 'google')\n")
 		fmt.Fprintf(os.Stderr, "  tld-file    TLD list file (e.g., 'tlds', 'cctlds')\n")
 		fmt.Fprintf(os.Stderr, "  resolver    DNS resolver (e.g., '8.8.8.8:53', '1.1.1.1:53')\n\n")
 		fmt.Fprintf(os.Stderr, "Update mode:\n")
 		fmt.Fprintf(os.Stderr, "  --update    Fetch IANA TLD list and remove wildcard TLDs\n")
-		fmt.Fprintf(os.Stderr, "              Outputs to 'tlds' by default\n\n")
+		fmt.Fprintf(os.Stderr, "              Outputs to stdout\n\n")
 		fmt.Fprintf(os.Stderr, "Output:\n")
 		fmt.Fprintf(os.Stderr, "  One domain per line to stdout\n")
-		fmt.Fprintf(os.Stderr, "  Use > to redirect: %s google tlds 8.8.8.8:53 > results\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  Use > to redirect output\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  %s google tlds 8.8.8.8:53     # Scan google\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --update                    # Update tlds file\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --update custom-tlds        # Update to custom file\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s google tlds 8.8.8.8:53 > results\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --update > tlds\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Common resolvers:\n")
 		fmt.Fprintf(os.Stderr, "  Google:     8.8.8.8:53 / 8.8.4.4:53\n")
 		fmt.Fprintf(os.Stderr, "  Cloudflare: 1.1.1.1:53 / 1.0.0.1:53\n")
@@ -46,12 +45,7 @@ func main() {
 
 	// Update mode
 	if updateMode {
-		outputFile := "tlds"
-		if len(args) > 0 {
-			outputFile = args[0]
-		}
-
-		if err := updateTLDs(outputFile); err != nil {
+		if err := updateTLDs(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

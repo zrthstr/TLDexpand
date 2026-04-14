@@ -34,10 +34,7 @@ tldexpand <domain> <tld-file> <resolver>
 
 ```bash
 # Fetch IANA list and remove wildcard TLDs
-./tldexpand --update
-
-# Or specify output file
-./tldexpand --update custom-tlds
+./tldexpand --update > tlds
 ```
 
 Fetches from IANA, tests all TLDs for wildcarding, removes false positives.

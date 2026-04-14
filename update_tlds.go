@@ -88,9 +88,16 @@ func updateTLDs(outputFile string) error {
 }
 
 func filterWildcards(tlds []string) (clean []string, wildcards []string) {
-	resolver := &net.Resolver{}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	// Use Google DNS for consistent wildcard detection
+	resolver := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Second * 10,
+			}
+			return d.DialContext(ctx, network, "8.8.8.8:53")
+		},
+	}
 
 	// Random test strings
 	randomTests := []string{
@@ -107,10 +114,12 @@ func filterWildcards(tlds []string) (clean []string, wildcards []string) {
 
 		resolveCount := 0
 
-		// Test random domains
+		// Test random domains with individual timeout per lookup
 		for _, random := range randomTests {
 			testDomain := random + "." + tld
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			_, err := resolver.LookupHost(ctx, testDomain)
+			cancel()
 			if err == nil {
 				resolveCount++
 			}

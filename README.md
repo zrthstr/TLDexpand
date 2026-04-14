@@ -57,7 +57,7 @@ go build -o tldexpand
 
 - 150 concurrent workers
 - Runtime wildcard filtering (auto-detects false positives)
-- Zero dependencies
+- Pure stdlib (no external dependencies)
 - ~3.4MB binary
 
 ## Original

@@ -34,10 +34,13 @@ tldexpand <domain> <tld-file> <resolver>
 
 ```bash
 # Fetch IANA list and remove wildcard TLDs
-./tldexpand --update > tlds
+./tldexpand --update 8.8.8.8:53 > tlds
 ```
 
-Fetches from IANA, tests all TLDs for wildcarding, removes false positives.
+Fetches from IANA, tests all TLDs for wildcarding (in parallel), removes false positives.
+
+**Arguments:**
+- `resolver` - DNS resolver to use for wildcard detection (e.g., '8.8.8.8:53')
 
 ## Install
 

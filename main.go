@@ -19,20 +19,21 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s <domain> <tld-file> <resolver>\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "   or: %s --update\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "   or: %s --update <resolver>\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Scan mode:\n")
 		fmt.Fprintf(os.Stderr, "  domain      Domain name to scan (e.g., 'google')\n")
 		fmt.Fprintf(os.Stderr, "  tld-file    TLD list file (e.g., 'tlds', 'cctlds')\n")
 		fmt.Fprintf(os.Stderr, "  resolver    DNS resolver (e.g., '8.8.8.8:53', '1.1.1.1:53')\n\n")
 		fmt.Fprintf(os.Stderr, "Update mode:\n")
 		fmt.Fprintf(os.Stderr, "  --update    Fetch IANA TLD list and remove wildcard TLDs\n")
+		fmt.Fprintf(os.Stderr, "  resolver    DNS resolver to use for wildcard detection\n")
 		fmt.Fprintf(os.Stderr, "              Outputs to stdout\n\n")
 		fmt.Fprintf(os.Stderr, "Output:\n")
 		fmt.Fprintf(os.Stderr, "  One domain per line to stdout\n")
 		fmt.Fprintf(os.Stderr, "  Use > to redirect output\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  %s google tlds 8.8.8.8:53 > results\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --update > tlds\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --update 8.8.8.8:53 > tlds\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Common resolvers:\n")
 		fmt.Fprintf(os.Stderr, "  Google:     8.8.8.8:53 / 8.8.4.4:53\n")
 		fmt.Fprintf(os.Stderr, "  Cloudflare: 1.1.1.1:53 / 1.0.0.1:53\n")
@@ -45,7 +46,13 @@ func main() {
 
 	// Update mode
 	if updateMode {
-		if err := updateTLDs(); err != nil {
+		if len(args) != 1 {
+			fmt.Fprintf(os.Stderr, "Error: --update requires a resolver argument\n\n")
+			flag.Usage()
+			os.Exit(1)
+		}
+		resolver := args[0]
+		if err := updateTLDs(resolver); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

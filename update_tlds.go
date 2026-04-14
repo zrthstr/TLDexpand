@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -17,7 +18,7 @@ const (
 	wildcardMinHits = 2
 )
 
-func updateTLDs() error {
+func updateTLDs(resolver string) error {
 	fmt.Fprintf(os.Stderr, "Fetching TLD list from IANA...\n")
 
 	// Fetch IANA list
@@ -47,10 +48,10 @@ func updateTLDs() error {
 	}
 
 	fmt.Fprintf(os.Stderr, "Fetched %d TLDs from IANA\n", len(rawTLDs))
-	fmt.Fprintf(os.Stderr, "Scanning for wildcard TLDs (false positives)...\n")
+	fmt.Fprintf(os.Stderr, "Scanning for wildcard TLDs using resolver %s...\n", resolver)
 
 	// Filter out wildcard TLDs
-	cleanTLDs, wildcardTLDs := filterWildcards(rawTLDs)
+	cleanTLDs, wildcardTLDs := filterWildcards(rawTLDs, resolver)
 
 	fmt.Fprintf(os.Stderr, "\nResults:\n")
 	fmt.Fprintf(os.Stderr, "  Total TLDs fetched: %d\n", len(rawTLDs))
@@ -78,18 +79,12 @@ func updateTLDs() error {
 	return nil
 }
 
-func filterWildcards(tlds []string) (clean []string, wildcards []string) {
-	// Use Google DNS for consistent wildcard detection
-	resolver := &net.Resolver{
-		PreferGo: true,
-		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-			d := net.Dialer{
-				Timeout: time.Second * 10,
-			}
-			return d.DialContext(ctx, network, "8.8.8.8:53")
-		},
-	}
+type tldResult struct {
+	tld        string
+	isWildcard bool
+}
 
+func filterWildcards(tlds []string, resolverAddr string) (clean []string, wildcards []string) {
 	// Random test strings
 	randomTests := []string{
 		"this-domain-absolutely-does-not-exist-12345678",
@@ -97,12 +92,66 @@ func filterWildcards(tlds []string) (clean []string, wildcards []string) {
 		"xyzabc123-fake-test-domain-should-not-resolve",
 	}
 
-	total := len(tlds)
-	for idx, tld := range tlds {
-		if idx%50 == 0 {
-			fmt.Fprintf(os.Stderr, "Progress: %d/%d TLDs checked\r", idx, total)
-		}
+	jobs := make(chan string, len(tlds))
+	results := make(chan tldResult, workers*2)
+	var wg sync.WaitGroup
 
+	// Create custom resolver
+	resolver := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Second * 10,
+			}
+			return d.DialContext(ctx, network, resolverAddr)
+		},
+	}
+
+	// Start result collector
+	var collectorWg sync.WaitGroup
+	collectorWg.Add(1)
+	processed := 0
+	total := len(tlds)
+
+	go func() {
+		defer collectorWg.Done()
+		for result := range results {
+			processed++
+			if processed%50 == 0 || processed == total {
+				fmt.Fprintf(os.Stderr, "Progress: %d/%d TLDs checked\r", processed, total)
+			}
+			if result.isWildcard {
+				wildcards = append(wildcards, result.tld)
+			} else {
+				clean = append(clean, result.tld)
+			}
+		}
+	}()
+
+	// Start worker pool
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go wildcardWorker(jobs, results, &wg, resolver, randomTests)
+	}
+
+	// Send jobs
+	for _, tld := range tlds {
+		jobs <- tld
+	}
+	close(jobs)
+
+	wg.Wait()
+	close(results)
+	collectorWg.Wait()
+
+	fmt.Fprintf(os.Stderr, "Progress: %d/%d TLDs checked\n", total, total)
+	return clean, wildcards
+}
+
+func wildcardWorker(jobs <-chan string, results chan<- tldResult, wg *sync.WaitGroup, resolver *net.Resolver, randomTests []string) {
+	defer wg.Done()
+
+	for tld := range jobs {
 		resolveCount := 0
 
 		// Test random domains with individual timeout per lookup
@@ -117,13 +166,9 @@ func filterWildcards(tlds []string) (clean []string, wildcards []string) {
 		}
 
 		// If 2+ random domains resolve, it's wildcarding
-		if resolveCount >= wildcardMinHits {
-			wildcards = append(wildcards, tld)
-		} else {
-			clean = append(clean, tld)
+		results <- tldResult{
+			tld:        tld,
+			isWildcard: resolveCount >= wildcardMinHits,
 		}
 	}
-
-	fmt.Fprintf(os.Stderr, "Progress: %d/%d TLDs checked\n", total, total)
-	return clean, wildcards
 }

@@ -1,3 +1,3 @@
-module github.com/l159375751/TLDexpand
+module github.com/zrthstr/TLDexpand
 
 go 1.26.2

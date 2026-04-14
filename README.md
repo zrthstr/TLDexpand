@@ -42,9 +42,17 @@ tldexpand <domain> <tld-file> <resolver>
 
 Fetches from IANA, tests all TLDs for wildcarding, removes false positives.
 
-## Build
+## Install
 
 ```bash
+go install github.com/zrthstr/TLDexpand@latest
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/zrthstr/TLDexpand.git
+cd TLDexpand
 go build -o tldexpand
 ```
 

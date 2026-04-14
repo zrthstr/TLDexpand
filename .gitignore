@@ -1,0 +1,11 @@
+# Binaries
+tldexpand
+
+# Vim swap files
+*.swp
+*.swo
+*~
+
+# Test files
+test-*
+*-test

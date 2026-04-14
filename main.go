@@ -151,7 +151,14 @@ func worker(domain string, jobs <-chan string, results chan<- string, wg *sync.W
 
 		_, err := resolver.LookupHost(ctx, fullDomain)
 		if err == nil {
-			results <- fullDomain
+			// Verify not a wildcard by testing a random nonsense domain
+			randomDomain := fmt.Sprintf("xyzabc-nonexistent-test-99999.%s", tld)
+			_, wildcardErr := resolver.LookupHost(ctx, randomDomain)
+
+			// Only output if random domain does NOT resolve (not a wildcard)
+			if wildcardErr != nil {
+				results <- fullDomain
+			}
 		}
 	}
 }
